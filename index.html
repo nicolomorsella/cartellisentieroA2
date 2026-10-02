@@ -1,0 +1,211 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Inizio sentiero A2 - Cartelli e rocce informative</title>
+<style>
+:root{--bg:#f3f5f2;--fg:#1d2a22;--panel:rgba(255,255,255,.96);--line:#2f5d3a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101820;--fg:#e8efe9;--panel:rgba(24,32,28,.96);--line:#8fc79a}}
+:root[data-theme="dark"]{--bg:#101820;--fg:#e8efe9;--panel:rgba(24,32,28,.96);--line:#8fc79a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden}
+body{position:relative}
+canvas{display:block;touch-action:none}
+#hd{position:relative;z-index:3;padding:10px 14px 8px;background:var(--panel);border-bottom:2px solid var(--line)}
+#hd h1{margin:0;font-size:17px;font-weight:700}#hd p{margin:2px 0 8px;font-size:12px;opacity:.8}
+#bar{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button.on{background:var(--line);color:var(--bg)}
+.pin{position:absolute;transform:translate(-50%,-50%);min-width:26px;height:26px;box-sizing:border-box;border-radius:13px;background:var(--line);color:var(--bg);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0 6px;pointer-events:none;border:2px solid var(--bg)}
+.pin.s{min-width:22px;height:20px;border-radius:10px;font-size:10px;padding:0 4px}
+.dm{position:absolute;transform:translate(-50%,0);margin-top:17px;font-size:13px;font-weight:600;white-space:nowrap;pointer-events:none;color:var(--fg);text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 6px var(--bg)}
+#sc{position:absolute;left:12px;bottom:14px;background:var(--panel);padding:4px 8px;border-radius:8px;font-size:12px;display:none}
+#sc i{display:block;height:5px;border:2px solid var(--fg);border-top:0;margin-bottom:2px}
+details{position:absolute;right:8px;bottom:8px;width:min(420px,94vw);box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;max-height:calc(100% - 130px);overflow:auto;z-index:2}
+summary{cursor:pointer;font-weight:700}
+.fm{margin:6px 0 2px;font-size:12px;opacity:.8}
+table.lg{border-collapse:collapse;width:100%;margin-top:4px}table.lg td{padding:5px 4px;vertical-align:top;border-top:1px solid rgba(128,128,128,.35)}
+table.lg .cd{font-weight:700;width:38px}table.lg .ms{white-space:nowrap;font-weight:600;text-align:right}table.lg .nt{font-size:12px;opacity:.75}
+table.lg .gr td{background:rgba(47,93,58,.14);font-weight:700;border-top:2px solid var(--line)}
+#nt{margin:8px 0 2px;font-size:12px;opacity:.85}
+.dm.u{margin-top:-24px;font-size:12px}
+.dm.e{margin-top:0;font-weight:500;font-style:italic;opacity:.85}
+</style></head><body>
+<div id="hd"><h1>Inizio sentiero A2 - Cartelli e rocce informative</h1><p>Parco Nazionale della Maiella · Sede di Bolognano · Rilievo speditivo con misure approssimative · settembre 2026</p>
+<div id="bar"><button id="b3" class="on">Vista 3D</button><button id="b4">Come in foto</button><button id="b2">Planimetria 2D</button><button id="bl">Codici e misure</button><button id="bf">Ricentra</button></div></div>
+<div id="sc"><i id="sci"></i><span>2 m</span></div>
+<details id="lg" open><summary>Legenda e misure</summary><p class="fm">Misure in centimetri · altezza × larghezza per i cartelli</p><table class="lg" id="tb"></table><p id="nt"></p></details>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const T=THREE,body=document.body,$=id=>document.getElementById(id);
+const R=new T.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio||1,2));R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;body.appendChild(R.domElement);
+const sc=new T.Scene();sc.background=new T.Color(0x9bc4da);sc.fog=new T.Fog(0x9bc4da,45,130);
+sc.add(new T.HemisphereLight(0xe7f0ee,0x788167,.82));
+const sun=new T.DirectionalLight(0xfff5e6,.74);sun.position.set(-4,12,3);sun.castShadow=true;sun.shadow.radius=2;sun.shadow.mapSize.set(2048,2048);
+const sh=sun.shadow.camera;sh.left=-10;sh.right=10;sh.top=8;sh.bottom=-8;sh.near=1;sh.far=40;sun.target.position.set(0,0,-4);sc.add(sun,sun.target);
+function ridge(points,z,depth,palette){const positions=[],colors=[],base=-8,rows=[points.map(([x],i)=>[x,base+(i%2)*.25,z+depth/2]),points.map(p=>[p[0],p[1],z]),points.map(([x],i)=>[x,base+((i+1)%2)*.25,z-depth/2])];
+const face=(a,b,c,index)=>{positions.push(...a,...b,...c);const color=new T.Color(palette[index%palette.length]);for(let i=0;i<3;i++)colors.push(color.r,color.g,color.b)};
+for(let row=0;row<2;row++)for(let i=0;i<points.length-1;i++){const a=rows[row][i],b=rows[row][i+1],c=rows[row+1][i],d=rows[row+1][i+1],shade=i*2+row*3;face(a,b,c,shade);face(b,d,c,shade+1)}
+const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(positions,3));g.setAttribute("color",new T.Float32BufferAttribute(colors,3));g.computeVertexNormals();const m=new T.Mesh(g,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,side:T.DoubleSide,roughness:1}));m.receiveShadow=true;sc.add(m)}
+ridge([[-55,.5],[-48,1.4],[-42,2],[-36,2.4],[-31,4.2],[-26,5.5],[-20,5.9],[-14,4.5],[-9,3.2],[-4,3.6],[2,6.3],[8,7],[14,5.7],[20,4.1],[26,4.4],[31,5.6],[37,4.5],[43,3.6],[49,2.8],[55,1]],-48,14,[0x65787a,0x71807d,0x7c8882,0x586d70,0x74817c]);
+ridge([[-55,.5],[-49,1.3],[-43,1.8],[-37,2.3],[-31,3.7],[-25,3.9],[-19,3],[-13,2.4],[-7,3.2],[-1,4.6],[5,4.2],[11,2.9],[17,2.2],[23,3.2],[29,4],[35,3.3],[41,2.2],[47,1.7],[55,.7]],-36,11,[0x4e6264,0x5b706e,0x687771,0x43595d,0x62716b]);
+const OB=new T.Group(),EN=new T.Group(),PL=new T.Group();sc.add(OB,EN,PL);
+const M=(c,r)=>new T.MeshStandardMaterial({color:c,roughness:r==null?.9:r});
+const bx=(w,h,d,m,x,y,z,g)=>{const o=new T.Mesh(new T.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;(g||OB).add(o);return o};
+const mk=(p,rot,par)=>{const g=new T.Group();g.position.set(p[0],0,p[1]);g.rotation.y=rot||0;(par||OB).add(g);return g};
+function tex(w,h,f){const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");f(x,w,h);const t=new T.CanvasTexture(c);t.anisotropy=4;return t}
+const fnt=(x,s,b)=>{x.font=(b?"bold ":"")+s+"px Arial,Helvetica,sans-serif"};
+function noise(base,n,cols,rep){const t=tex(256,256,(x,w,h)=>{x.fillStyle=base;x.fillRect(0,0,w,h);for(let i=0;i<n;i++){x.fillStyle=cols[i%cols.length];x.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*3,2+Math.random()*3)}});t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(rep,rep);return t}
+// terreno: prato scuro con terra, sassolini e ghiaia; sterrata scura
+function gtex(){const t=tex(512,512,(x,w,h)=>{x.fillStyle="#50633c";x.fillRect(0,0,w,h);
+for(let i=0;i<70;i++){x.fillStyle=["#5a4630","#4a3a28","#6a5439"][i%3];x.globalAlpha=.55;x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,6+Math.random()*16,4+Math.random()*10,Math.random()*3,0,7);x.fill()}x.globalAlpha=1;
+const gc=["#3c5b35","#4b6b40","#587647","#688151","#465f39"];for(let i=0;i<5200;i++){x.fillStyle=gc[i%5];x.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2,2+Math.random()*4)}
+for(let i=0;i<150;i++){const r=1.5+Math.random()*3.5,px=Math.random()*w,py=Math.random()*h;x.fillStyle="rgba(0,0,0,.25)";x.beginPath();x.ellipse(px+1,py+1.5,r,r*.7,0,0,7);x.fill();x.fillStyle=["#8d887c","#a39d90","#6f6a60","#b4ab97"][i%4];x.beginPath();x.ellipse(px,py,r,r*.7,Math.random()*3,0,7);x.fill()}
+for(let i=0;i<900;i++){x.fillStyle=["#8d887c","#6f6a60","#a8a296"][i%3];x.fillRect(Math.random()*w,Math.random()*h,1.5,1.5)}});t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(18,14.4);return t}
+function vtex(){const t=tex(512,512,(x,w,h)=>{x.fillStyle="#625d54";x.fillRect(0,0,w,h);const pc=["#4a463f","#7a756a","#8d887c","#3f3b35","#6f6a60","#9a9488"];
+for(let i=0;i<9000;i++){x.fillStyle=pc[i%6];const r=.8+Math.random()*2.2;x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,r,r*.75,Math.random()*3,0,7);x.fill()}
+for(let i=0;i<120;i++){x.fillStyle="rgba(40,35,30,.35)";x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,8+Math.random()*14,4+Math.random()*8,Math.random()*3,0,7);x.fill()}});t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(20,2);return t}
+const gr=new T.Mesh(new T.PlaneGeometry(70,48,140,96),new T.MeshStandardMaterial({map:gtex(),roughness:1}));gr.geometry.translate(0,4,0);gr.rotation.x=-Math.PI/2;gr.position.set(0,0,-8);gr.receiveShadow=true;sc.add(gr);{const a=gr.geometry.attributes.position;for(let i=0;i<a.count;i++){const x=a.getX(i),y=a.getY(i),wz=-y-8,k=Math.min(1,Math.max(0,(-2.2-wz)/1.5));a.setZ(i,k*(Math.sin(x*.6)*.015+Math.sin(y*.9+x*.3)*.02+Math.sin(x*2.1+y*1.7)*.008))}gr.geometry.computeVertexNormals()}
+const gv=new T.Mesh(new T.PlaneGeometry(70,6),new T.MeshStandardMaterial({map:vtex(),color:0xcfcfcf,roughness:1}));gv.rotation.x=-Math.PI/2;gv.position.set(0,.005,1.45);gv.receiveShadow=true;sc.add(gv);
+const trailTex=tex(512,256,(x,w,h)=>{x.beginPath();x.moveTo(0,h*.5);x.bezierCurveTo(w*.12,h*.44,w*.12,h*.25,w*.23,h*.34);x.bezierCurveTo(w*.38,h*.42,w*.43,h*.25,w*.58,h*.31);x.bezierCurveTo(w*.73,h*.4,w*.82,h*.25,w,h*.46);x.lineTo(w,h*.55);x.bezierCurveTo(w*.84,h*.75,w*.76,h*.62,w*.6,h*.69);x.bezierCurveTo(w*.43,h*.76,w*.37,h*.6,w*.22,h*.68);x.bezierCurveTo(w*.12,h*.76,w*.1,h*.56,0,h*.5);x.closePath();
+x.shadowColor="rgba(57,67,39,.42)";x.shadowBlur=20;x.fillStyle="rgba(111,83,54,.8)";x.fill();x.shadowBlur=0;x.clip();
+x.fillStyle="rgba(116,88,58,.56)";x.fillRect(0,0,w,h);
+for(let i=0;i<42;i++){x.fillStyle=["rgba(91,73,52,.28)","rgba(139,105,67,.28)","rgba(91,112,61,.32)"][i%3];x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,12+Math.random()*34,5+Math.random()*14,Math.random()*3,0,7);x.fill()}
+for(let i=0;i<1250;i++){x.fillStyle=["rgba(72,101,48,.7)","rgba(119,143,75,.65)","rgba(137,105,70,.68)","rgba(89,75,59,.7)","rgba(119,118,107,.7)","rgba(158,153,137,.72)"][i%6];const r=1+Math.random()*2.5;x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,r,r*.65,Math.random()*3,0,7);x.fill()}
+for(let i=0;i<100;i++){x.fillStyle=["rgba(110,108,99,.7)","rgba(151,147,132,.72)","rgba(85,81,72,.72)"][i%3];x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,2+Math.random()*4,1+Math.random()*2.5,Math.random()*3,0,7);x.fill()}x.restore()});trailTex.wrapS=trailTex.wrapT=T.RepeatWrapping;trailTex.repeat.set(1,1);
+const leftTrail=new T.Mesh(new T.PlaneGeometry(8.6,2.4),new T.MeshStandardMaterial({map:trailTex,roughness:1,transparent:true,depthWrite:false}));leftTrail.rotation.x=-Math.PI/2;leftTrail.position.set(-11.8,.035,-4.25);leftTrail.receiveShadow=true;sc.add(leftTrail);
+for(let i=0;i<11;i++){const r=new T.Mesh(new T.DodecahedronGeometry(.07+Math.random()*.07,0),new T.MeshStandardMaterial({color:[0x817d73,0xaaa397,0x675e52,0x8a6d52][i%4],roughness:1}));r.position.set(-14.0+Math.random()*7.5,.06+Math.random()*.05,-5.2+Math.random()*.5);r.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);r.scale.set(.85,0.65+Math.random()*.35,.85);r.castShadow=r.receiveShadow=true;sc.add(r)}
+// natura: alberi con rami e foglie, sottobosco, erba e sassi
+function smooth(g){g.computeVertexNormals();const p=g.attributes.position,n=g.attributes.normal,m={},K=i=>p.getX(i).toFixed(3)+","+p.getY(i).toFixed(3)+","+p.getZ(i).toFixed(3);
+for(let i=0;i<p.count;i++){const k=K(i),v=m[k]||(m[k]=[0,0,0]);v[0]+=n.getX(i);v[1]+=n.getY(i);v[2]+=n.getZ(i)}
+for(let i=0;i<p.count;i++){const v=m[K(i)],l=Math.hypot(v[0],v[1],v[2])||1;n.setXYZ(i,v[0]/l,v[1]/l,v[2]/l)}}
+function rb(w,h,d,r,mat,g,x,y,z){const s=new T.Shape(),a=w/2,b=d/2;s.moveTo(-a+r,-b);s.lineTo(a-r,-b);s.quadraticCurveTo(a,-b,a,-b+r);s.lineTo(a,b-r);s.quadraticCurveTo(a,b,a-r,b);s.lineTo(-a+r,b);s.quadraticCurveTo(-a,b,-a,b-r);s.lineTo(-a,-b+r);s.quadraticCurveTo(-a,-b,-a+r,-b);
+const ge=new T.ExtrudeGeometry(s,{depth:h-.02,bevelEnabled:true,bevelSize:.01,bevelThickness:.01,bevelSegments:3,curveSegments:8});ge.rotateX(-Math.PI/2);ge.translate(0,-(h/2-.01),0);smooth(ge);const o=new T.Mesh(ge,mat);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;g.add(o);return o}
+const rtex=tex(256,256,(x,w,h)=>{x.fillStyle="#9d9a90";x.fillRect(0,0,w,h);const pc=["#8a877d","#aeaba0","#7c796f","#b9b4a6","#a29c8a"];for(let i=0;i<2600;i++){x.fillStyle=pc[i%5];const r=1+Math.random()*3;x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,r,r*.8,Math.random()*3,0,7);x.fill()}
+for(let i=0;i<60;i++){x.fillStyle=["rgba(120,130,70,.35)","rgba(200,190,120,.3)","rgba(60,60,55,.3)"][i%3];x.beginPath();x.ellipse(Math.random()*w,Math.random()*h,5+Math.random()*14,4+Math.random()*9,Math.random()*3,0,7);x.fill()}});rtex.wrapS=rtex.wrapT=T.RepeatWrapping;rtex.repeat.set(1.2,1.2);
+const bk=tex(64,256,(x,w,h)=>{x.fillStyle="#4a3a2a";x.fillRect(0,0,w,h);for(let i=0;i<150;i++){x.fillStyle=["#3a2c1e","#5e4a36","#2f2418"][i%3];x.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2,10+Math.random()*60)}});bk.wrapS=bk.wrapT=T.RepeatWrapping;bk.repeat.set(2,3);
+const bark=new T.MeshStandardMaterial({map:bk,roughness:1}),LP=[],rnd=Math.random;
+const lf=tex(64,64,(x,w,h)=>{x.fillStyle="#fff";x.beginPath();x.moveTo(32,1);x.bezierCurveTo(52,10,58,34,32,63);x.bezierCurveTo(6,34,12,10,32,1);x.fill();x.strokeStyle="#c8c8c8";x.lineWidth=1.5;x.beginPath();x.moveTo(32,4);x.lineTo(32,60);for(let i=0;i<6;i++){const y=14+i*8;x.moveTo(32,y+4);x.lineTo(32-14+i,y-4);x.moveTo(32,y+4);x.lineTo(32+14-i,y-4)}x.stroke()});
+const leaves=(cx,cy,cz,rx,ry,rz,n,dk)=>{for(let i=0;i<n;i++){const a=rnd()*6.28,b=Math.acos(2*rnd()-1),r=Math.pow(rnd(),.4);LP.push([cx+rx*r*Math.sin(b)*Math.cos(a),cy+ry*r*Math.cos(b),cz+rz*r*Math.sin(b)*Math.sin(a),dk?1:0])}};
+[[-8.6,-6.7,5.2,.05],[-6.3,-6.2,4.6,-.04],[-3.6,-6.5,5.4,.03],[-1,-6.6,4.8,0],[1.6,-6.4,5.6,-.05],[4.6,-6.6,5,.06],[7,-6.3,4.4,0]].forEach(t=>{
+const tg=new T.CylinderGeometry(.07,.15,t[2],14,10),pa=tg.attributes.position,p0=rnd()*6;for(let i=0;i<pa.count;i++){const y=pa.getY(i);pa.setX(i,pa.getX(i)+Math.sin(y*1.3+p0)*.05);pa.setZ(i,pa.getZ(i)+Math.sin(y*1.1+p0*2)*.04)}tg.computeVertexNormals();
+const tr=new T.Mesh(tg,bark);tr.position.set(t[0],t[2]/2,t[1]);tr.rotation.z=t[3];tr.castShadow=true;EN.add(tr);
+leaves(t[0],t[2]+.2,t[1],1.7,1.2,1.2,700);
+for(let i=0;i<7;i++){const y=t[2]*(.35+.55*rnd()),L=.9+rnd()*1.2,a=.7+rnd()*.6,th=rnd()*6.28,g=new T.Group();g.position.set(t[0],y,t[1]);g.rotation.y=th;
+const c=new T.Mesh(new T.CylinderGeometry(.018,.045,L,8,3),bark);c.geometry.translate(0,L/2,0);c.rotation.z=-a;g.add(c);EN.add(g);
+leaves(t[0]+L*Math.sin(a)*Math.cos(th),y+L*Math.cos(a),t[1]-L*Math.sin(a)*Math.sin(th),.7,.55,.7,200)}});
+leaves(-2,1,-6,7.2,1.1,.5,3000);leaves(-2,2.4,-7,8,2.6,.4,3200,1);
+const greenTrees=[[-21,-9,3.8],[-15.5,-15,3.4],[-25,-17,3.6],[11.5,-10,4],[18.5,-14,3.7]];
+greenTrees.forEach(t=>{const h=t[2],tg=new T.CylinderGeometry(.07,.14,h,14,8),tr=new T.Mesh(tg,bark);tr.position.set(t[0],h/2,t[1]);tr.castShadow=true;EN.add(tr);leaves(t[0],h+.15,t[1],1.3,.95,1.05,460);
+for(let i=0;i<4;i++){const y=h*(.35+.45*rnd()),L=.65+rnd()*.55,a=.65+rnd()*.45,th=rnd()*6.28,g=new T.Group();g.position.set(t[0],y,t[1]);g.rotation.y=th;const c=new T.Mesh(new T.CylinderGeometry(.015,.04,L,8,3),bark);c.geometry.translate(0,L/2,0);c.rotation.z=-a;g.add(c);EN.add(g);leaves(t[0]+L*Math.sin(a)*Math.cos(th),y+L*Math.cos(a),t[1]-L*Math.sin(a)*Math.sin(th),.55,.45,.55,115)}});
+const NL=LP.length,LI=new T.InstancedMesh(new T.PlaneGeometry(1,1),new T.MeshStandardMaterial({map:lf,alphaTest:.5,side:T.DoubleSide,roughness:1}),NL),o3=new T.Object3D(),
+lcl=[0x4f7a2b,0x5f8a34,0x3f6a28,0x6f9a3c,0x7aa545,0x8a9a3a,0x4a5f2a,0x35592a],dkc=[0x2a4a1e,0x24401a,0x30531f];
+for(let i=0;i<NL;i++){const s=.09+rnd()*.1;o3.position.set(LP[i][0],Math.max(.05,LP[i][1]),LP[i][2]);o3.rotation.set(rnd()*6.28,rnd()*6.28,rnd()*6.28);o3.scale.set(s,s*1.5,1);o3.updateMatrix();LI.setMatrixAt(i,o3.matrix);LI.setColorAt(i,new T.Color(LP[i][3]?dkc[i%3]:lcl[i%8]))}EN.add(LI);
+const NB=3200,gb=new T.InstancedMesh(new T.ConeGeometry(.012,.18,5,1,true).translate(0,.09,0),new T.MeshStandardMaterial({roughness:1,side:T.DoubleSide}),NB),gcl=[0x3d6b25,0x4f7a2b,0x5f8a34,0x6f9a3c,0x8a9a3a,0x6a5a35];
+for(let i=0;i<NB;i++){o3.position.set(-9+rnd()*18,0,-6+rnd()*4.1);o3.rotation.set((rnd()-.5)*.6,rnd()*6,(rnd()-.5)*.6);const s=.5+rnd()*.8;o3.scale.set(s,s*(.55+rnd()*.45),s);o3.updateMatrix();gb.setMatrixAt(i,o3.matrix);gb.setColorAt(i,new T.Color(gcl[i%6]))}EN.add(gb);
+const NP=260,pb=new T.InstancedMesh(new T.IcosahedronGeometry(.035,1),new T.MeshStandardMaterial({roughness:1}),NP);
+for(let i=0;i<NP;i++){o3.position.set(-9+rnd()*18,.012,-6.1+rnd()*4.3);o3.rotation.set(rnd()*6,rnd()*6,0);const s=.6+rnd()*1.5;o3.scale.set(s,s*.6,s*(.8+rnd()*.5));o3.updateMatrix();pb.setMatrixAt(i,o3.matrix);pb.setColorAt(i,new T.Color([0x8d887c,0xa39d90,0x6f6a60,0xb4ab97][i%4]))}EN.add(pb);
+const NE=760,edgeGrass=new T.InstancedMesh(new T.ConeGeometry(.012,.28,5,1,true).translate(0,.14,0),new T.MeshStandardMaterial({roughness:1,side:T.DoubleSide}),NE),egc=[0x3d6b25,0x4f7a2b,0x5f8a34,0x6f9a3c,0x8a9a3a,0x7b7741];
+for(let i=0;i<NE;i++){const side=i%2?1:-1,d=1.2+rnd()*1.1,s=.45+rnd()*.55+(d-1.2)*.35;o3.position.set(-15.9+rnd()*8.2,.005,-4.25+side*d);o3.rotation.set((rnd()-.5)*.35,rnd()*6,(rnd()-.5)*.35);o3.scale.set(s,s*(.65+rnd()*.75),s);o3.updateMatrix();edgeGrass.setMatrixAt(i,o3.matrix);edgeGrass.setColorAt(i,new T.Color(egc[i%egc.length]))}EN.add(edgeGrass);
+const shrubMesh=new T.InstancedMesh(new T.IcosahedronGeometry(.18,1),new T.MeshStandardMaterial({roughness:1}),64),shrubColors=[0x42672d,0x507738,0x66863d,0x718b43,0x385b2b];
+for(let i=0;i<16;i++){const side=i%2?1:-1,bx=-15.7+rnd()*7.8,bz=-4.25+side*(1.6+rnd()*.65);for(let j=0;j<4;j++){const s=.8+rnd()*.6;o3.position.set(bx+(rnd()-.5)*.34,s*.18,bz+(rnd()-.5)*.3);o3.rotation.set(rnd()*.4,rnd()*6,rnd()*.4);o3.scale.set(s,s*(.7+rnd()*.45),s);o3.updateMatrix();const index=i*4+j;shrubMesh.setMatrixAt(index,o3.matrix);shrubMesh.setColorAt(index,new T.Color(shrubColors[(i+j)%shrubColors.length]))}}EN.add(shrubMesh);
+const groveBushSpots=[[-24.3,-5.2],[-18.2,-2.7],[-23,-12.8],[-18,-20],[10.5,-2.8],[15.2,-6.3],[22,-8.5],[13,-16],[25,-18]],groveBushes=new T.InstancedMesh(new T.IcosahedronGeometry(.2,1),new T.MeshStandardMaterial({roughness:1}),54),gbc=[0x42672d,0x507738,0x66863d,0x718b43,0x385b2b];
+groveBushSpots.forEach((p,i)=>{for(let j=0;j<6;j++){const s=.8+rnd()*.55;o3.position.set(p[0]+(rnd()-.5)*.48,s*.2,p[1]+(rnd()-.5)*.42);o3.rotation.set(rnd()*.4,rnd()*6,rnd()*.4);o3.scale.set(s,s*(.7+rnd()*.4),s);o3.updateMatrix();const n=i*6+j;groveBushes.setMatrixAt(n,o3.matrix);groveBushes.setColorAt(n,new T.Color(gbc[(i+j)%gbc.length]))}});EN.add(groveBushes);
+const boulderSpots=[[-19.5,-5.4],[-25,-12.2],[11.7,-6.8],[18,-8.7],[23,-15.5]],landRocks=new T.InstancedMesh(new T.DodecahedronGeometry(1,0),new T.MeshStandardMaterial({roughness:1}),20),rockColors=[0x77766f,0x98958a,0x625b50,0x80684f];
+boulderSpots.forEach((p,i)=>{for(let j=0;j<4;j++){const s=.16+rnd()*.14;o3.position.set(p[0]+(j-1.5)*.34+(rnd()-.5)*.12,.1+s*.35,p[1]+(j%2?-.2:.2)+(rnd()-.5)*.14);o3.rotation.set(rnd()*6,rnd()*6,rnd()*6);o3.scale.set(s*(.8+rnd()*.5),s*(.55+rnd()*.45),s*(.8+rnd()*.5));o3.updateMatrix();const n=i*4+j;landRocks.setMatrixAt(n,o3.matrix);landRocks.setColorAt(n,new T.Color(rockColors[(i+j)%rockColors.length]))}});landRocks.castShadow=true;EN.add(landRocks);
+const rw=M(0x8a6a45,1);[4.4,6.4,8.4].forEach(x=>bx(.09,.9,.09,rw,x,.45,-5,EN));[.5,.85].forEach(y=>bx(4.1,.06,.05,rw,6.4,y,-5,EN));
+// testi e grafica dei cartelli
+const tC1=tex(256,540,(x,w,h)=>{x.fillStyle="#efede4";x.fillRect(0,0,w,h);x.fillStyle="#333";x.textAlign="center";fnt(x,19,1);x.fillText("SENTIERO DI MONTAGNA",w/2,30);fnt(x,10);x.fillText("PRESTA LA MASSIMA ATTENZIONE E CAUTELA",w/2,48);x.fillText("PRIMA DI PARTIRE VERIFICA LE CARATTERISTICHE",w/2,66);x.fillText("ED INFORMATI SULLE CONDIZIONI DEL SENTIERO",w/2,80);
+for(let i=0;i<5;i++){x.fillStyle="#c0392b";x.beginPath();x.arc(30,118+i*38,13,0,7);x.fill()}x.fillStyle="#bdbdb5";for(let i=0;i<9;i++){x.fillRect(58,100+i*20,70,10);x.fillRect(140,100+i*20,100,10)}
+x.fillStyle="#3d6f8f";x.fillRect(0,300,w,26);x.fillStyle="#fff";fnt(x,10,1);x.fillText("VERIFICA LA PERCORRIBILITA DEL SENTIERO IN BICI E A CAVALLO",w/2,317);
+x.fillStyle="#e08a2a";x.fillRect(0,405,w,62);x.fillStyle="#fff";fnt(x,13,1);x.fillText("ATTIVITA' IN PRESENZA DI NEVE",w/2,440);
+x.fillStyle="#e8e6de";x.fillRect(0,470,w,70);x.fillStyle="#c0392b";x.fillRect(0,472,w,10);x.fillStyle="#333";fnt(x,11,1);x.fillText("INOLTRE, DEVI SAPERE CHE:",w/2,505)});
+const tF=tex(440,88,(x,w,h)=>{x.fillStyle="#8a6a47";x.beginPath();x.moveTo(0,44);x.lineTo(40,0);x.lineTo(440,0);x.lineTo(440,88);x.lineTo(40,88);x.fill();x.fillStyle="#b3261e";x.beginPath();x.moveTo(0,44);x.lineTo(40,0);x.lineTo(72,0);x.lineTo(72,88);x.lineTo(40,88);x.fill();
+x.fillStyle="#f1e6c8";fnt(x,17,1);x.textAlign="left";x.fillText("Fiume Orta",84,26);x.fillText("Piano dei Luchi",84,52);x.fillText("S.Tommaso",84,78);x.textAlign="right";x.fillText("0.10",335,26);x.fillText("0.30",335,52);x.fillText("1.10",335,78);
+x.fillStyle="#fff";x.fillRect(362,10,68,68);x.strokeStyle="#c0392b";x.lineWidth=5;x.strokeRect(364,12,64,64);x.fillStyle="#c0392b";fnt(x,22,1);x.textAlign="center";x.fillText("A-2",396,52)});
+const tA2=tex(200,288,(x,w,h)=>{x.fillStyle="#f0eee6";x.fillRect(0,0,w,h);x.fillStyle="#c0392b";x.fillRect(8,6,34,16);x.fillStyle="#fff";fnt(x,11,1);x.textAlign="center";x.fillText("A2",25,18);
+x.fillStyle="#8a2a1e";fnt(x,10,1);x.fillText("DA MUSELLARO (BOLOGNANO)",110,38);x.fillText("A SAN TOMMASO (CARAMANICO TERME)",110,52);
+x.fillStyle="#6b6a60";x.fillRect(0,60,24,210);x.save();x.translate(15,230);x.rotate(-Math.PI/2);x.fillStyle="#fff";fnt(x,10,1);x.fillText("Parco Nazionale della Maiella",70,0);x.restore();
+x.fillStyle="#dfe8d0";x.fillRect(30,70,92,110);x.strokeStyle="#c0392b";x.lineWidth=2;x.beginPath();x.moveTo(40,160);x.lineTo(70,120);x.lineTo(95,130);x.lineTo(110,90);x.stroke();
+x.fillStyle="#e08a2a";x.fillRect(128,62,66,26);x.fillStyle="#fff";fnt(x,7,1);x.fillText("COME COMPORTARSI",161,73);x.fillText("NEL PARCO",161,83);x.fillStyle="#bdbdb5";for(let i=0;i<14;i++)x.fillRect(130,96+i*11,62,6);
+x.fillStyle="#e08a2a";x.fillRect(0,272,w,16)});
+const tCom=tex(90,70,(x,w,h)=>{x.fillStyle="#fff";x.fillRect(0,0,w,h);x.fillStyle="#1f4e8c";x.textAlign="center";fnt(x,12,1);x.fillText("Comune di",45,20);x.fillText("Bolognano",45,36);x.fillStyle="#e08a2a";x.fillRect(10,46,70,16)});
+const tR4=tex(300,92,(x,w,h)=>{x.fillStyle="#f6f6f2";x.fillRect(0,0,w,h);x.strokeStyle="#222";x.lineWidth=3;x.strokeRect(2,2,w-4,h-4);x.fillStyle="#111";x.beginPath();x.moveTo(14,46);x.lineTo(44,20);x.lineTo(44,35);x.lineTo(78,35);x.lineTo(78,57);x.lineTo(44,57);x.lineTo(44,72);x.fill();
+fnt(x,23,1);x.textAlign="left";x.fillText("SENTIERO",90,40);x.fillText("PONTE LUCO",90,72);x.fillStyle="#1f6f7a";x.beginPath();x.arc(272,46,16,0,7);x.fill()});
+const tTag=tex(70,50,(x,w,h)=>{x.fillStyle="#c0392b";x.fillRect(0,0,w,h);x.fillStyle="#fff";x.fillRect(14,0,42,h);x.fillStyle="#c0392b";fnt(x,22,1);x.textAlign="center";x.fillText("A2",35,34)});
+const tI=tex(256,200,(x,w,h)=>{x.fillStyle="#e6e5de";x.fillRect(0,0,w,h);x.strokeStyle="#bdbab0";x.lineWidth=2;for(let i=0;i<14;i++){x.beginPath();x.moveTo(14,14+i*13);x.lineTo(60+Math.random()*180,14+i*13);x.stroke()}});
+function brd(w,h,t,tx,g,x,y,z){const sd=M(0x6b5a45,.9),o=new T.Mesh(new T.BoxGeometry(w,h,t),[sd,sd,sd,sd,new T.MeshStandardMaterial({map:tx,roughness:.7}),sd]);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;g.add(o);return o}
+const pl=(w,h,tx,g,x,y,z,al)=>{const o=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({map:tx,roughness:.8,transparent:!!al,alphaTest:al?.5:0}));o.position.set(x,y,z);g.add(o);return o};
+const woodP=M(0x8a6240,.9),metal=M(0x8a8c8e,.5),wood=M(0x8a6a47,.9);
+// posizioni stimate dalla foto (x laterale, z = -distanza dalla strada), metri
+const P1=[-4.41,-4.45],P2=[-1.96,-5.32],P3=[-.83,-4.7],P4=[.68,-4.8],P5=[2.54,-3.6];
+// C1 cartello sentiero su palo
+const g1=mk(P1,.15);bx(.085,1.6,.085,woodP,0,.8,-.0575,g1);brd(.5,1.05,.03,tC1,g1,0,1.075,0);
+// F freccia su palo
+const g2=mk(P2,0);bx(.08,1.45,.08,woodP,0,.725,0,g2);bx(.5,.11,.03,wood,.025,1.28,0,g2);pl(.55,.11,tF,g2,0,1.28,.017,1);
+[1.4,1.12].forEach(y=>pl(.06,.07,tCom,g2,0,y,.042));
+// A2 cartello su due pali
+const g3=mk(P3,0);[-.2,.2].forEach(x=>{bx(.08,1.65,.08,woodP,x,.825,0,g3);bx(.1,.12,.1,metal,x,.06,0,g3)});brd(.5,.72,.03,tA2,g3,0,1.21,.055);pl(.18,.14,tCom,g3,-.2,.62,.045);
+// R1 roccia con cartello
+function rock(pts,dp,col){const cr=new T.SplineCurve(pts.map(p=>new T.Vector2(p[0],p[1]))).getPoints(110),s=new T.Shape();cr.forEach((p,i)=>i?s.lineTo(p.x,p.y):s.moveTo(p.x,p.y));
+const g=new T.ExtrudeGeometry(s,{depth:dp,bevelEnabled:true,bevelSize:.07,bevelThickness:.09,bevelSegments:6,steps:1});g.translate(0,0,-dp/2);const a=g.attributes.position;
+for(let i=0;i<a.count;i++){const x=a.getX(i),y=a.getY(i),z=a.getZ(i);a.setXYZ(i,x+Math.sin(y*11+z*7)*.02+Math.sin(y*29+z*17)*.008,y+Math.sin(x*9+z*5)*.018+Math.sin(x*23+z*13)*.007,z+Math.sin(x*8+y*10)*.03+Math.sin(x*21+y*19)*.01)}
+smooth(g);const o=new T.Mesh(g,new T.MeshStandardMaterial({map:rtex,bumpMap:rtex,bumpScale:1.2,roughness:1}));o.castShadow=o.receiveShadow=true;return o}
+const g4=mk(P4,0);g4.add(rock([[-.78,0],[-.6,.45],[-.38,.85],[-.27,1.2],[-.15,1.37],[-.02,1.15],[.12,.98],[.25,.92],[.42,.85],[.55,.78],[.68,.5],[.78,0]],.5,0x9f9c92));
+brd(.65,.2,.02,tR4,g4,-.1,.62,.325);brd(.14,.1,.012,tTag,g4,-.08,.43,.325);
+for(let i=0;i<5;i++){const o=new T.Mesh(new T.IcosahedronGeometry(.1+Math.random()*.06,1),M(0x4f8a2a,1));o.position.set(.7+Math.random()*.35,.1,.3+Math.random()*.3);o.castShadow=true;g4.add(o)}
+// R2 roccia informativa su piedistallo
+const g5=mk(P5,.1);rb(.27,.45,.27,.04,M(0xd8cfae,1),g5,0,.225,0);const dc=new T.Mesh(new T.CylinderGeometry(.32,.32,.02,40),M(0xa8a59c,1));dc.position.y=.01;dc.receiveShadow=true;g5.add(dc);
+const gs=new T.Group();gs.position.y=.51;gs.rotation.x=.17;g5.add(gs);rb(1.4,.12,1.2,.07,new T.MeshStandardMaterial({map:rtex,color:0xc9c4b8,roughness:1}),gs,0,0,0);const pq=pl(1.1,.9,tI,gs,0,.062,0);pq.rotation.x=-Math.PI/2;
+// planimetria: impronte in pianta e quote
+const fl=(g,pts,col,op,dx,dz)=>{const s=new T.Shape();pts.forEach((p,i)=>i?s.lineTo(p[0],-p[1]):s.moveTo(p[0],-p[1]));const ge=new T.ShapeGeometry(s);ge.rotateX(-Math.PI/2);const o=new T.Mesh(ge,new T.MeshBasicMaterial({color:col,transparent:op<1,opacity:op,side:T.DoubleSide}));o.position.set(dx||0,.05,dz||0);g.add(o)};
+const rc=(w,d)=>[[-w/2,-d/2],[w/2,-d/2],[w/2,d/2],[-w/2,d/2]],OR=0xd9822b,DK=0x4a2f1a;
+let q=mk(P1,.15,PL);fl(q,rc(.5,.03),OR,1);fl(q,rc(.085,.085),DK,1,0,-.0575);
+q=mk(P2,0,PL);fl(q,[[-.275,0],[-.225,.015],[.275,.015],[.275,-.015],[-.225,-.015]],OR,1);fl(q,rc(.08,.08),DK,1);
+q=mk(P3,0,PL);fl(q,rc(.5,.03),OR,1,0,.055);[-.2,.2].forEach(x=>fl(q,rc(.08,.08),DK,1,x,0));
+q=mk(P4,0,PL);const el=[];for(let i=0;i<24;i++){const a=i/24*Math.PI*2;el.push([Math.cos(a)*.78,Math.sin(a)*.25])}fl(q,el,0x8d8b83,1);fl(q,rc(.65,.02),0xffffff,1,-.1,.31);
+q=mk(P5,.1,PL);fl(q,rc(.27,.27),0x6b6040,1);fl(q,rc(1.4,1.2),0xcfc9b6,.65);fl(q,rc(1.1,.9),0xf0efe8,.8);
+const xs=[P1,P2,P3,P4,P5].map(p=>p[0]),zl=-2.7,LV=[];
+LV.push(new T.Vector3(xs[0],.06,zl),new T.Vector3(xs[4],.06,zl));[P1,P2,P3,P4,P5].forEach(p=>{LV.push(new T.Vector3(p[0],.06,p[1]),new T.Vector3(p[0],.06,zl),new T.Vector3(p[0],.06,zl-.1),new T.Vector3(p[0],.06,zl+.1))});
+PL.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(LV),new T.LineBasicMaterial({color:0x1d2a22})));
+// dati: codice, nome, gruppo, misure, nota, etichetta breve, posizione
+const D=[
+{c:"C1",n:"Cartello del sentiero (su palo)",g:"Cartelli e frecce",m:"Tavola 105 × 50<br>Palo 8,5 × 8,5 × h 160",t:"Palo quadrato dietro la tavola. Spessore tavola non misurato (stimato 3).",s:"105 × 50",p:[P1[0],1.9,P1[1]]},
+{c:"F",n:"Freccia del sentiero (su palo)",g:"Cartelli e frecce",m:"Freccia 55 × 11<br>Palo 8 × 8 × h 145",t:"Indica Fiume Orta, Piano dei Luchi, S. Tommaso. Spessore freccia non misurato (stimato 3).",s:"55 × 11",p:[P2[0],1.7,P2[1]]},
+{c:"A2",n:"Cartello sentiero A2 (su due pali)",g:"Cartelli e frecce",m:"Tavola 72 × 50<br>Pali 8 × 8 × h 165 (due)",t:"Interasse dei pali circa 40 e bordo inferiore della tavola a circa 85 da terra: stimati dalla foto.",s:"72 × 50",p:[P3[0],1.9,P3[1]]},
+{c:"R1",n:"Roccia con cartello",g:"Rocce",m:"157 × h 137<br>Cartello circa 65 × 20",t:"Roccia molto irregolare: misure approssimative. Profondità e cartello stimati.",s:"157 × h 137",p:[P4[0],1.6,P4[1]]},
+{c:"R2",n:"Roccia informativa su piedistallo",g:"Rocce",m:"Pietra forata 140 × 120<br>Cartello info 110 × 90<br>Piedistallo 83 × 27",t:"Piedistallo irregolare. Nella foto sembra alto circa 45 cm (nel render uso 45): da verificare cosa indica 83. Spessore e inclinazione della pietra stimati.",s:"140 × 120",p:[P5[0],1.1,P5[1]]},
+{c:"",n:"Distanze tra i centri (stimate dalla foto)",g:"Distanze in metri",m:"C1-F 2,45<br>F-A2 1,13<br>A2-R1 1,51<br>R1-R2 1,86",t:"Distanza dal bordo della strada sterrata: C1 2,9 · F 3,8 · A2 3,2 · R1 3,3 · R2 2,1.",p:null}];
+const dist=[[0,1],[1,2],[2,3],[3,4]],PP=[P1,P2,P3,P4,P5];
+dist.forEach(d=>{const a=PP[d[0]],b=PP[d[1]],v=Math.abs(b[0]-a[0]).toFixed(2).replace(".",",")+" m";D.push({s:v,p:[(a[0]+b[0])/2,.06,zl-.12],cls:"u",plan:1})});
+D.push({s:"Strada sterrata",p:[-4.5,.06,-.9],cls:"e",plan:1},{s:"Alberi e vegetazione",p:[-2.2,.06,-6.2],cls:"e",plan:1});
+let gg="",hh="";D.forEach(d=>{if(!d.n)return;if(d.g!=gg){gg=d.g;hh+='<tr class="gr"><td colspan="3">'+gg+"</td></tr>"}hh+='<tr><td class="cd">'+d.c+"</td><td><b>"+d.n+'</b><br><span class="nt">'+d.t+'</span></td><td class="ms">'+d.m+"</td></tr>"});
+$("tb").innerHTML=hh;$("nt").innerHTML="Misure in centimetri prese a mano, approssimative; per i cartelli: altezza × larghezza. Posizioni e distanze ricavate dalla foto panoramica (ultra-grandangolo, scattata dalla strada sterrata verso gli alberi), con un errore possibile di alcune decine di centimetri. Il render mostra le scritte principali dei cartelli, non il testo completo.";
+D.forEach(d=>{if(d.p&&d.c){d.pin=document.createElement("div");d.pin.className="pin";d.pin.textContent=d.c;body.appendChild(d.pin)}if(d.s&&d.p){d.dm=document.createElement("div");d.dm.className="dm"+(d.cls?" "+d.cls:"");d.dm.textContent=d.s;body.appendChild(d.dm)}});
+// camera e controlli
+const tg=new T.Vector3(),c3=new T.PerspectiveCamera(50,1,.05,300),c2=new T.OrthographicCamera(-1,1,1,-1,.1,100);c2.up.set(0,0,-1);
+let th=.5,ph=1.25,ds=7.5,mode=3,labs=false,zm=1,cam=c3;
+function size(){const hd=$("hd").offsetHeight,w=body.clientWidth,h=body.clientHeight-hd;R.setSize(w,h);R.domElement.style.position="absolute";R.domElement.style.left="0";R.domElement.style.top=hd+"px";const a=w/h;c3.aspect=a;c3.updateProjectionMatrix();const v=Math.max(6.2,12/a);c2.left=-a*v/2;c2.right=a*v/2;c2.top=v/2;c2.bottom=-v/2;c2.zoom=zm;c2.updateProjectionMatrix()}
+addEventListener("resize",size);
+const ppm=()=>R.domElement.clientHeight/((c2.top-c2.bottom)/c2.zoom);
+function place(){if(mode==2){c2.position.set(tg.x,40,tg.z);c2.lookAt(tg.x,0,tg.z)}else{c3.position.set(tg.x+ds*Math.sin(ph)*Math.sin(th),tg.y+ds*Math.cos(ph),tg.z+ds*Math.sin(ph)*Math.cos(th));c3.lookAt(tg)}}
+const P=new Map();let pd=0;const cv0=R.domElement;
+cv0.addEventListener("pointerdown",e=>{cv0.setPointerCapture(e.pointerId);P.set(e.pointerId,[e.clientX,e.clientY]);if(P.size==2){const a=[...P.values()];pd=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1])}});
+cv0.addEventListener("pointerup",e=>P.delete(e.pointerId));cv0.addEventListener("pointercancel",e=>P.delete(e.pointerId));
+cv0.addEventListener("pointermove",e=>{if(!P.has(e.pointerId))return;const o=P.get(e.pointerId),dx=e.clientX-o[0],dy=e.clientY-o[1];P.set(e.pointerId,[e.clientX,e.clientY]);
+if(P.size==2){const a=[...P.values()],d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pd)zoom(d/pd);pd=d;return}
+if(mode!=2){th-=dx*.006;ph=Math.min(1.55,Math.max(.2,ph-dy*.005))}else{tg.x-=dx/ppm();tg.z-=dy/ppm()}});
+cv0.addEventListener("wheel",e=>{e.preventDefault();zoom(e.deltaY<0?1.12:.89)},{passive:false});
+function zoom(f){if(mode!=2)ds=Math.min(25,Math.max(1.5,ds/f));else{zm=Math.min(8,Math.max(.5,zm*f));c2.zoom=zm;c2.updateProjectionMatrix()}}
+const bt={3:$("b3"),4:$("b4"),2:$("b2")},bl=$("bl"),scb=$("sc");
+function fit(){zm=1;c2.zoom=1;c2.updateProjectionMatrix();if(mode==2)tg.set(-.9,0,-4.2);else if(mode==4){tg.set(0,1.1,-5);th=0;ph=Math.PI/2;ds=5}else{tg.set(-.6,.9,-4.6);th=.5;ph=1.25;ds=7.5}}
+function setMode(m){mode=m;cam=m==2?c2:c3;c3.fov=m==4?95:50;c3.updateProjectionMatrix();for(const k in bt)bt[k].classList.toggle("on",k==m);scb.style.display=m==2?"block":"none";labs=m==2;bl.classList.toggle("on",labs);OB.visible=EN.visible=m!=2;PL.visible=m==2;fit()}
+bt[3].onclick=()=>setMode(3);bt[4].onclick=()=>setMode(4);bt[2].onclick=()=>setMode(2);bl.onclick=()=>{labs=!labs;bl.classList.toggle("on",labs)};$("bf").onclick=fit;
+if(innerWidth<700)$("lg").open=false;
+const v=new T.Vector3();
+function loop(){requestAnimationFrame(loop);place();R.render(sc,cam);
+const w=body.clientWidth,hd=$("hd").offsetHeight,h=body.clientHeight-hd;
+D.forEach(d=>{if(!d.p)return;v.set(d.p[0],d.p[1],d.p[2]).project(cam);const ok=v.z<1&&Math.abs(v.x)<1.05&&Math.abs(v.y)<1.05,x=((v.x*.5+.5)*w)+"px",y=((-v.y*.5+.5)*h+hd)+"px";
+if(d.pin){d.pin.style.display=ok&&labs?"flex":"none";d.pin.style.left=x;d.pin.style.top=y}
+if(d.dm){d.dm.style.display=ok&&(d.plan?mode==2:labs)?"block":"none";d.dm.style.left=x;d.dm.style.top=y}});
+if(mode==2)$("sci").style.width=(ppm()*2)+"px"}
+size();window.__v={m:setMode};setMode(3);loop();
+})();
+</script></body></html>
